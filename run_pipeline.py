@@ -4,43 +4,42 @@ import os
 
 def run_script(script_name, working_dir):    
     start_time = time.time()
-    
+
     try:
-        # Sử dụng subprocess để chạy file python
+        # Use subprocess to run the python script
         process = subprocess.run(
             ["python", script_name],
             cwd=working_dir,
-            check=True # Báo lỗi ngay nếu script chạy thất bại
+            check=True # Raise an error immediately if the script fails
         )
-        
+
         end_time = time.time()
         return True
-        
+
     except subprocess.CalledProcessError as e:
-        print(f"\n❌ LỖI NGHIÊM TRỌNG TẠI: {script_name}")
-        print(f"Chi tiết mã lỗi: {e.returncode}")
+        print(f"\nCritical error in: {script_name}")
+        print(f"Error code details: {e.returncode}")
         return False
     except FileNotFoundError:
-        print(f"\n❌ Không tìm thấy 'python'. Hãy kiểm tra lại biến môi trường.")
+        print(f"\n'python' command not found. Please check your environment variables.")
         return False
 
 def main():
-    print("🚀 BẮT ĐẦU CHẠY DỰ ÁN")
     total_start_time = time.time()
-    
-    # Lấy đường dẫn tuyệt đối của thư mục gốc
+
+    # Get the absolute path of the root directory
     base_dir = os.path.dirname(os.path.abspath(__file__))
-    
+
     # Crawl Data (Extract)
     crawl_dir = os.path.join(base_dir, "crawl")
     if not run_script("crawl_data.py", crawl_dir):
-        print("\n🛑 Pipeline bị dừng vì Crawl thất bại.")
+        print("\nFailure in crawling.")
         return
 
     # Clean & Load Data (Transform & Load)
     clean_dir = os.path.join(base_dir, "clean")
     if not run_script("clean_data.py", clean_dir):
-        print("\n🛑 Pipeline bị dừng vì Clean thất bại.")
+        print("\nFailure in cleaning.")
         return
 
     total_end_time = time.time()

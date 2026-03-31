@@ -4,41 +4,39 @@ import os
 from sqlalchemy import create_engine
 
 def load_to_postgres(df):
-    
-    # Cấu hình thông tin kết nối 
     DB_USER = 'postgres'
     DB_PASSWORD = 'postgres' 
     DB_HOST = 'postgres'
     DB_PORT = '5432'
     DB_NAME = 'IT_job_data'
-
+    
     try:
-        # Tạo kết nối đến database
+        # Create database connection
         engine = create_engine(f'postgresql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}')
-        
-        # Đẩy DataFrame vào database
+
+        # Push DataFrame to database
         df.to_sql('it_jobs', engine, if_exists='replace', index=False)
-        
-        print("✅ Đã load dữ liệu vào DB.")
+
+        print("Data successfully loaded into DB.")
     except Exception as e:
-        print(f"❌ Lỗi khi đẩy dữ liệu vào Database: {e}")
+        print(f"Error pushing data to Database: {e}")
 
 def clean_jobs():
-    print("🚀 Đang bắt đầu tiến trình làm sạch dữ liệu...")
-    
-    # --- CẤU HÌNH ĐƯỜNG DẪN ---
+    print("Starting data cleaning process...")
+
+    # Path configuration
     current_dir = os.path.dirname(os.path.abspath(__file__))
     input_file = os.path.join(current_dir, "..", "crawl", "data", "raw_jobs.csv")
     output_dir = os.path.join(current_dir, "data")
     output_file = os.path.join(output_dir, "cleaned_jobs.csv")
 
     if not os.path.exists(input_file):
-        print(f"❌ LỖI: Không tìm thấy file '{input_file}'!")
+        print(f"ERROR: File '{input_file}' not found!")
         return
 
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-        print(f"📁 Đã tạo thư mục chứa dữ liệu sạch tại: {output_dir}")
+        print(f"Created directory for cleaned data at: {output_dir}")
 
     try:
         df = pd.read_csv(input_file, encoding="utf-8-sig")
@@ -47,31 +45,30 @@ def clean_jobs():
         if df.empty:
             print("⚠️ Cảnh báo: File dữ liệu rỗng.")
             return
-
-        # 1. XỬ LÝ TRÙNG LẶP
-        df.drop_duplicates(subset=["job_link"], inplace=True)
-
-        # 2. KIỂM TRA VÀ XÓA DÒNG THIẾU DỮ LIỆU
-        before_drop = len(df)
         
-        # Lấy danh sách các cột cần kiểm tra 
+        # Handle duplicatas
+        df.drop_duplicates(subset=["job_link"], inplace=True)
+        
+        # Check and remove rows with insufficient valid data
+        before_drop = len(df)
+
+        # Get list of columns to check
         exclude_cols = ["salary", "experience", "job_requirements"]
         cols_to_check = [col for col in df.columns if col not in exclude_cols]
 
         for col in cols_to_check:
-            # Lọc bỏ các dòng có giá trị null thực sự (NaN)
+            # Filter out rows with actual null values (NaN)
             df = df[df[col].notna()]
-            # Lọc bỏ các dòng chứa chuỗi "N/A", "nan", rỗng 
+            # Filter out rows containing "N/A", "nan", or empty strings
             df = df[~df[col].astype(str).str.strip().str.lower().isin(["n/a", "nan", "", "none"])]
 
         after_drop = len(df)
         if before_drop - after_drop > 0:
-            print(f"    -> Đã xóa {before_drop - after_drop} dòng không đủ dữ liệu hợp lệ.")
-
-        # Fill N/A cho các giá trị rỗng còn sót lại 
+            print(f"    -> Removed {before_drop - after_drop} rows with insufficient valid data.")
+        # Fill remaining empty values with N/A
         df.fillna("N/A", inplace=True)
 
-        # 3. CHUẨN HÓA LƯƠNG
+        # Salary standardization
         df["salary"] = (
             df["salary"]
             .astype(str)
@@ -81,8 +78,8 @@ def clean_jobs():
             .str.strip()
         )
         df.loc[df["salary"].str.lower() == "đang cập nhật", "salary"] = "Thoả thuận"
-
-        # 4. CHUẨN HÓA KINH NGHIỆM
+        
+        # Experience standardization
         def format_experience(exp):
             exp = str(exp).strip()
             
@@ -99,10 +96,10 @@ def clean_jobs():
                 return "Có yêu cầu"
             
             return exp
-
+        
         df["experience"] = df["experience"].apply(format_experience)
 
-        # 5. ĐỊNH DẠNG MÔ TẢ (Heading & List)
+        # Heading and formatting for job descriptions
         def smart_format(text):
             if str(text) == "N/A": return text
             lines = str(text).split('\n')
@@ -127,16 +124,15 @@ def clean_jobs():
         if "job_requirements" in df.columns:
             df.drop(columns=["job_requirements"], inplace=True)
 
-        # 6. LƯU FILE
+        # Save file and push to DB
         df.to_csv(output_file, index=False, encoding="utf-8-sig")
-        print(f"✅ THÀNH CÔNG! Đã lưu {len(df)} dòng data sạch.")
-        # 7. ĐẨY DỮ LIỆU VÀO DATABASE
+        print(f"SUCCESS! Saved {len(df)} cleaned data rows.")
         load_to_postgres(df)
 
     except PermissionError:
-        print(f"❌ LỖI: Không thể ghi file.")
+        print(f"ERROR: Cannot write file.")
     except Exception as e:
-        print(f"❌ Đã xảy ra lỗi: {e}")
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     clean_jobs()

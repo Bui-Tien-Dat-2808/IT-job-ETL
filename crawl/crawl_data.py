@@ -6,7 +6,7 @@ from datetime import datetime
 import time
 import random
 
-# CẤU HÌNH
+# CONFIGURATION
 JOB_POSITIONS = [
     "Backend Developer",
     "Frontend Developer",
@@ -45,7 +45,7 @@ HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-# THÊM THAM SỐ PAGE VÀO URL
+# ADD PAGE PARAMETER TO URL
 def build_search_url(job_name, page=1):
     return f"{BASE_URL}/tuyen-dung?q={job_name.replace(' ', '+')}&page={page}"
 
@@ -53,7 +53,7 @@ def crawl_jobs():
     all_jobs = []
 
     for position in JOB_POSITIONS:
-        print(f"\n🔍 Đang crawl vị trí: {position}")
+        print(f"\nCrawling position: {position}")
         page = 1 # Bắt đầu từ trang 1
         
         while True: # Vòng lặp chạy vô tận cho đến khi hết trang
@@ -65,12 +65,12 @@ def crawl_jobs():
                 soup = BeautifulSoup(response.text, "html.parser")
                 job_items = soup.find_all("div", class_="job__list-item")
                 
-                # NẾU KHÔNG TÌM THẤY JOB NÀO TRÊN TRANG NÀY -> ĐÃ ĐẾN TRANG CUỐI CÙNG -> THOÁT
-                if len(job_items) == 0:
-                    print(f"   🛑 Đã quét hết dữ liệu cho vị trí '{position}'.")
+                # IF NO JOBS ARE FOUND ON THIS PAGE -> REACHED THE LAST PAGE -> EXIT
+                if not job_items:
+                    print(f"   Scanned all data for position '{position}'.")
                     break 
 
-                print(f"      Tìm thấy {len(job_items)} công việc. Bắt đầu lấy chi tiết...")
+                print(f"      Found {len(job_items)} jobs. Starting to fetch details...")
 
                 for item in job_items: 
                     try:
@@ -86,13 +86,13 @@ def crawl_jobs():
                         company_tag = item.find("div", class_="job__list-item-company")
                         company = company_tag.find("span").get_text(strip=True) if company_tag else "N/A"
 
-                        # 2. VÀO TRANG CHI TIẾT
+                        # 2. ENTER DETAIL PAGE
                         experience = "N/A"
                         salary = "N/A"
                         location = "N/A"
                         full_description = "N/A"
                         
-                        time.sleep(random.uniform(1.5, 3.0)) # Giữ delay để tránh bị khóa IP
+                        time.sleep(random.uniform(1.5, 3.0)) # Maintain delay to avoid IP blocking
                         
                         try:
                             res_detail = requests.get(job_link, headers=HEADERS, timeout=10)
@@ -122,7 +122,7 @@ def crawl_jobs():
                                  full_description = content_div.get_text(separator="\n").strip()
                             
                         except Exception as e:
-                            print(f"      ⚠ Lỗi detail link: {e}")
+                            print(f"      Error fetching detail link: {e}")
 
                         all_jobs.append({
                             "position_search": position,
@@ -137,21 +137,21 @@ def crawl_jobs():
                         })
 
                     except Exception as e:
-                        print(f"      ⚠ Lỗi item: {e}")
+                        print(f"      Error processing item: {e}")
                         continue
                 
-                # Chuyển sang trang tiếp theo sau khi quét xong 
+                # Move to the next page after scanning
                 page += 1
 
             except Exception as e:
-                print(f"❌ Lỗi mạng ở trang {page}: {url} - {e}")
-                break # Thoát nếu gặp lỗi mạng nghiêm trọng
+                print(f"Network error on page {page}: {url} - {e}")
+                break # Exit if a critical network error occurs
 
     return pd.DataFrame(all_jobs)
 
 if __name__ == "__main__":
-    os.makedirs("data", exist_ok=True)
-    print("🚀 BẮT ĐẦU QUÁ TRÌNH CRAWL TOÀN BỘ DỮ LIỆU...")
+    os.makedirs("data", exist_ok=True) # Ensure data directory exists
+    print("STARTING FULL DATA CRAWL PROCESS...")
     df = crawl_jobs()
     print(f"\n✅ Đã hoàn thành! Tổng số job crawl được: {len(df)}")
     df.to_csv("data/raw_jobs.csv", index=False, encoding="utf-8-sig")

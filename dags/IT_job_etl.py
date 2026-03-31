@@ -2,36 +2,36 @@ from airflow import DAG
 from airflow.operators.bash import BashOperator
 from datetime import datetime, timedelta
 
-# Cấu hình mặc định cho luồng chạy
+# Default configuration for the pipeline
 default_args = {
     'owner': 'data_engineer',
     'depends_on_past': False,
     'start_date': datetime(2026, 1, 1),
     'retries': 1,
-    'retry_delay': timedelta(minutes=5), # Nếu lỗi sẽ thử lại sau 5 phút
+    'retry_delay': timedelta(minutes=5), # Retry after 5 minutes if an error occurs
 }
 
-# Khởi tạo DAG, hẹn giờ chạy vào lúc 0h00 mỗi ngày
+# Initialize DAG, scheduled to run daily at 00:00
 with DAG(
     'it_jobs_etl_pipeline',
     default_args=default_args,
-    description='Luồng ETL crawl và xử lý dữ liệu việc làm IT',
+    description='ETL pipeline to crawl and process IT job data',
     schedule_interval='0 0 * * *', 
     catchup=False,
     tags=['it_jobs', 'etl']
 ) as dag:
 
-    # Task 1: Chạy task crawl
+    # Task 1: Run crawl task
     crawl_task = BashOperator(
         task_id='extract_data',
         bash_command='cd /opt/airflow/crawl && python crawl_data.py'
     )
 
-    # Task 2: Chạy task clean & load vào DB
+    # Task 2: Run clean & load into DB task
     clean_load_task = BashOperator(
         task_id='transform_and_load_data',
         bash_command='cd /opt/airflow/clean && python clean_data.py'
     )
 
-    # Thiết lập thứ tự chạy
+    # Set task order
     crawl_task >> clean_load_task
