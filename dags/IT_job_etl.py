@@ -24,13 +24,13 @@ with DAG(
     # Task 1: Run crawl task
     crawl_task = BashOperator(
         task_id='extract_data',
-        bash_command='cd /opt/airflow/crawl && python crawl_data.py'
+        bash_command='cd /opt/airflow/src && python main_crawler.py'
     )
 
-    # Task 2: Run clean & load into DB task
+    # Task 2: Run clean & load task
     clean_load_task = BashOperator(
         task_id='transform_and_load_data',
-        bash_command='cd /opt/airflow/clean && python clean_data.py'
+        bash_command='cd /opt/airflow/src && python main_cleaner.py'
     )
 
     # Set task order
