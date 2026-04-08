@@ -10,6 +10,7 @@ x-airflow-common:
     - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
     - AIRFLOW__CORE__LOAD_EXAMPLES=False
     - _PIP_ADDITIONAL_REQUIREMENTS=pandas sqlalchemy psycopg2-binary beautifulsoup4 requests streamlit lxml minio python-dotenv
+    - AIRFLOW__WEBSERVER__SECRET_KEY=${AIRFLOW__WEBSERVER__SECRET_KEY}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./src:/opt/airflow/src  
@@ -21,7 +22,7 @@ x-airflow-common:
 
 services:
   postgres:
-    image: postgres:18-alpine
+    image: postgres:18
     env_file: 
       - .env
     ports:

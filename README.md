@@ -15,31 +15,36 @@
 
 ## 🛠️ Architecture & Workflow
 
-1. **Extract (Crawl):** Python scripts (`requests`, `BeautifulSoup`) scrape daily job postings across 25+ IT positions (Data Engineer, Backend, Tester, AI Engineer, etc.) from recruitment platforms.
-2. **Transform (Clean):** `Pandas` and `Regex` are utilized to clean HTML tags, handle missing values, standardize salary and experience formats, and format job descriptions into clean Markdown.
-3. **Load:** The cleaned dataset is loaded directly into a **PostgreSQL** database using `SQLAlchemy`.
+1. **Extract (Crawl):** Python scripts (`requests`, `BeautifulSoup`) scrape daily job postings across 25+ IT positions (Data Engineer, Backend, Tester, AI Engineer, etc.) from recruitment platforms. The raw data is then stored in a **MinIO** data lake (`raw-zone`).
+2. **Transform (Clean):** Raw data is retrieved from MinIO. `Pandas` and `Regex` are utilized to clean HTML tags, handle missing values, standardize salary and experience formats, and format job descriptions. The cleaned data is then stored back into **MinIO** (`clean-zone`).
+3. **Load:** The cleaned dataset is loaded from MinIO into a **PostgreSQL** database using `SQLAlchemy`.
 4. **Orchestrate:** **Apache Airflow** schedules and monitors the pipeline via a custom DAG, ensuring the jobs run sequentially (Extract -> Transform & Load) at 00:00 daily.
 5. **Visualize:** A **Streamlit** web application connects to the PostgreSQL database to serve real-time job market insights and filtering capabilities.
 
 ## 📁 Project Structure
 
 ```text
-├── 📁 clean
-│   ├── 📁 data
-│   │   └── 📄 cleaned_jobs.csv
-│   └── 🐍 clean_data.py
-├── 📁 crawl
-│   ├── 📁 data
-│   │   └── 📄 raw_jobs.csv
-│   └── 🐍 crawl_data.py
 ├── 📁 dags
 │   └── 🐍 IT_job_etl.py
+├── 📁 src
+│   ├── 📁 core
+│   │   ├── 🐍 config.py
+│   │   └── 🐍 logger.py
+│   ├── 📁 infrastructure
+│   │   ├── 🐍 database_repo.py
+│   │   └── 🐍 minio_repo.py
+│   ├── 📁 main
+│   │   ├── 🐍 main_cleaner.py
+│   │   └── 🐍 main_crawler.py
+│   └── 📁 services
+│       ├── 🐍 cleaner_service.py
+│       └── 🐍 crawler_service.py
+├── ⚙️ .env.example
 ├── ⚙️ .gitignore
 ├── 📝 README.md
 ├── 🐍 app.py
 ├── ⚙️ docker-compose.yaml
-├── 📄 requirements.txt
-└── 🐍 run_pipeline.py
+└── 📄 requirements.txt
 ```
 
 ## ⚙️ How to Run Locally
@@ -49,6 +54,11 @@
 - Docker & Docker Desktop installed.
 
 ### Steps
+- Start the airflow-init service for the first time. After that, you don't need to run this step:
+```bash
+docker-compose up airflow-init
+```
+
 - Start the services using Docker Compose:
 ```bash
 docker-compose up -d
@@ -56,6 +66,9 @@ docker-compose up -d
 
 ### Access the UIs
 - Apache Airflow (Orchestration): Navigate to http://localhost:8080 (Default login: admin / admin). Unpause and trigger the it_jobs_etl_pipeline DAG.
+    - *This DAG may take up to several hours to complete, depending on the number of professions you choose*
+
+- MinIO (Data Lake): Navigate to http://localhost:9001 (Default login: ROOT_USER, CHANGEME123)
 
 - Streamlit (Dashboard): Navigate to http://localhost:8501 to explore the cleaned data.
 

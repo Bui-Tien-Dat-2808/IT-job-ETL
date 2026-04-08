@@ -1,6 +1,10 @@
 import sys
 import os
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+
+src_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+if src_dir not in sys.path:
+    sys.path.append(src_dir)
 
 from services.crawler_service import CrawlerService
 
